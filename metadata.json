@@ -1,0 +1,6 @@
+{
+  "name": "PR SYSTEM - ระบบบริการงานประชาสัมพันธ์",
+  "description": "ระบบบริหารจัดการและติดตามคำขอรับบริการงานประชาสัมพันธ์ ออกแบบโปสเตอร์ ถ่ายภาพ ลงข่าว FB แจ้งเตือนผ่าน LINE และสรุปผลรายเดือนอัตโนมัติ",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

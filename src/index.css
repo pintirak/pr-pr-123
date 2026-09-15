@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --ios-bg: #f2f2f7;
+    --ios-card: rgba(255, 255, 255, 0.85);
+    --ios-border: rgba(60, 60, 67, 0.12);
+  }
+
+  .dark {
+    --ios-bg: #000000;
+    --ios-card: rgba(28, 28, 30, 0.85);
+    --ios-border: rgba(84, 84, 88, 0.4);
+  }
+}
+
+/* iOS smooth scroll & tap highlight */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 150, 0.5);
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
