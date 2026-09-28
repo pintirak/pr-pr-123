@@ -320,22 +320,29 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <button
                         key={staff.id}
                         onClick={() => onAssignStaff(task.id, staff)}
-                        className={`flex items-center gap-2.5 p-2 rounded-xl text-left transition-all ${
+                        className={`relative flex items-center gap-2.5 p-2.5 rounded-2xl text-left transition-all ${
                           isAssigned
-                            ? 'bg-blue-50 dark:bg-blue-950/60 border-2 border-blue-500'
-                            : 'bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100'
+                            ? 'bg-blue-50 dark:bg-blue-950/70 border-2 border-blue-500 shadow-sm'
+                            : 'bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
                         <img
                           src={staff.avatar}
                           alt={staff.name}
-                          className="w-8 h-8 rounded-full object-cover"
+                          className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-slate-800 flex-shrink-0"
                         />
-                        <div className="overflow-hidden">
-                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                            {staff.name}
-                          </p>
-                          <p className="text-[10px] text-slate-400 truncate">
+                        <div className="overflow-hidden flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+                              {staff.name}
+                            </p>
+                            {isAssigned && (
+                              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/60 px-1.5 py-0.5 rounded-full ml-1">
+                                รับผิดชอบ
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                             {staff.role}
                           </p>
                         </div>

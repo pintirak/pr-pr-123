@@ -2,42 +2,42 @@ import { PRRequest, LineNotificationSettings, NotificationLog } from '../types';
 import { INITIAL_PR_REQUESTS, INITIAL_LINE_SETTINGS } from '../data/initialData';
 
 const STORAGE_KEYS = {
-  REQUESTS: 'pr_system_requests_db_v1',
-  SETTINGS: 'pr_system_line_settings_v1',
-  LOGS: 'pr_system_notification_logs_v1',
+  REQUESTS: 'pr_system_requests_db_nurse_v2',
+  SETTINGS: 'pr_system_line_settings_nurse_v2',
+  LOGS: 'pr_system_notification_logs_nurse_v2',
   THEME: 'pr_system_theme_v1',
 };
 
-// Initial notification sample logs
+// Initial notification sample logs (คณะพยาบาลศาสตร์ ม.นเรศวร)
 const INITIAL_LOGS: NotificationLog[] = [
   {
     id: 'log-1',
     timestamp: '2025-09-12T09:15:05Z',
     taskId: 'PR-2025-001',
-    taskTitle: 'ออกแบบโปสเตอร์และแบนเนอร์ประชาสัมพันธ์งาน Open House 2025',
+    taskTitle: 'ออกแบบโปสเตอร์และแบนเนอร์รับสมัครนิสิตใหม่ หลักสูตรพยาบาลศาสตรบัณฑิต 2568',
     type: 'new_request',
-    recipient: 'LINE Group: PR-Team-Noti',
-    message: '📌 มีคำขอรับบริการใหม่: ออกแบบโปสเตอร์และแบนเนอร์ประชาสัมพันธ์งาน Open House 2025 จาก กองพัฒนานักศึกษาและกิจกรรม (ด่วน)',
+    recipient: 'LINE Group: PR-Team-NurseNU',
+    message: '📌 มีคำขอรับบริการใหม่: ออกแบบโปสเตอร์และแบนเนอร์รับสมัครนิสิตใหม่ หลักสูตรพยาบาลศาสตรบัณฑิต 2568 จาก หลักสูตรพยาบาลศาสตรบัณฑิต (ปริญญาตรี) (ด่วน)',
     status: 'sent',
   },
   {
     id: 'log-2',
     timestamp: '2025-09-11T16:00:10Z',
     taskId: 'PR-2025-002',
-    taskTitle: 'ถ่ายภาพพิธีลงนามบันทึกความเข้าใจ (MOU)',
+    taskTitle: 'ถ่ายภาพพิธีมอบหมวกและเข็มวิทยฐานะ นิสิตพยาบาลศาสตร์',
     type: 'delivery',
-    recipient: 'LINE User: kittisak_mou',
-    message: '🎉 ชิ้นงานเสร็จสมบูรณ์แล้ว: อัลบั้มภาพพิธีลงนาม_MOU_2025 ส่งมอบเรียบร้อย พร้อมลิงก์ดาวน์โหลด',
+    recipient: 'LINE User: kittisak_nu_nurse',
+    message: '🎉 ชิ้นงานเสร็จสมบูรณ์แล้ว: อัลบั้มภาพพิธีมอบหมวกพยาบาล_ม.นเรศวร_2568 ส่งมอบเรียบร้อย พร้อมลิงก์ Google Drive',
     status: 'sent',
   },
   {
     id: 'log-3',
     timestamp: '2025-09-15T08:30:15Z',
     taskId: 'PR-2025-005',
-    taskTitle: 'ออกแบบป้ายไวนิลฉากหลังเวที (Backdrop 6x3 เมตร)',
+    taskTitle: 'ออกแบบป้ายไวนิลเวทีและ Backdrop งานประชุมวิชาการพยาบาลศาสตร์ระดับชาติ 2568',
     type: 'new_request',
-    recipient: 'LINE Group: PR-Emergency-Alert',
-    message: '🚨 ด่วนพิเศษ (ภายใน 24 ชม.)! คำขอ #PR-2025-005 ป้ายเวทีสัมมนา จาก คณะวิทย์ฯ โปรดตรวจสอบทันที',
+    recipient: 'LINE Group: PR-Team-NurseNU',
+    message: '🚨 ด่วนพิเศษ (ภายใน 24 ชม.)! คำขอ #PR-2025-005 ป้ายเวทีประชุมวิชาการ จาก โครงการสัมมนาและการประชุมวิชาการพยาบาล โปรดตรวจสอบทันที',
     status: 'sent',
   },
 ];

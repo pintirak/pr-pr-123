@@ -42,7 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="flex items-center gap-2.5 cursor-pointer group"
               id="pr-brand-logo"
             >
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-sm shadow-indigo-500/30 group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-blue-600 flex items-center justify-center text-white shadow-sm shadow-teal-500/30 group-hover:scale-105 transition-transform">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -50,12 +50,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
                     PR SYSTEM
                   </span>
-                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
-                    บริการประชาสัมพันธ์
+                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+                    คณะพยาบาลศาสตร์ ม.นเรศวร
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 -mt-0.5 hidden sm:block">
-                  Public Relations Management & Service Hub
+                  ระบบบริการงานประชาสัมพันธ์ Faculty of Nursing, Naresuan University
                 </p>
               </div>
             </div>
@@ -124,18 +124,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right Action Controls */}
           <div className="flex items-center gap-2.5">
             
-            {/* Dark / Light Mode Toggle (iOS Switch Style) */}
+            {/* Dark / Light Mode Toggle: Single Icon Switch (โหมดกลางวัน/กลางคืน ไอคอนเดียวสลับ) */}
             <button
               id="theme-toggle-btn"
               onClick={() => setDarkMode((prev) => !prev)}
-              aria-label="Toggle Theme"
-              className="p-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-              title={darkMode ? 'สลับเป็นโหมดสว่าง (Light)' : 'สลับเป็นโหมดมืด (Dark)'}
+              aria-label="สลับโหมดกลางวัน/กลางคืน"
+              className="relative p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all duration-300 active:scale-90 flex items-center justify-center border border-slate-200/70 dark:border-slate-700/70 shadow-xs"
+              title={darkMode ? 'คลิกเพื่อสลับเป็นโหมดกลางวัน (Light Mode)' : 'คลิกเพื่อสลับเป็นโหมดกลางคืน (Dark Mode)'}
             >
               {darkMode ? (
-                <Sun className="w-5 h-5 text-amber-400" />
+                <Sun className="w-5 h-5 text-amber-400 transition-transform duration-300 hover:rotate-90 animate-in fade-in zoom-in" />
               ) : (
-                <Moon className="w-5 h-5 text-slate-600" />
+                <Moon className="w-5 h-5 text-indigo-600 transition-transform duration-300 hover:-rotate-12 animate-in fade-in zoom-in" />
               )}
             </button>
 

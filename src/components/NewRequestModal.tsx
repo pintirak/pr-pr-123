@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { PRRequest, PRServiceType, PRUrgency } from '../types';
-import { PR_SERVICES_CONFIG, DEPARTMENTS_LIST, URGENCY_CONFIG } from '../data/initialData';
+import { PR_SERVICES_CONFIG, DEPARTMENTS_LIST, NURSE_NU_DEPARTMENT_GROUPS, URGENCY_CONFIG } from '../data/initialData';
 
 interface NewRequestModalProps {
   isOpen: boolean;
@@ -379,22 +379,42 @@ export const NewRequestModal: React.FC<NewRequestModalProps> = ({
           {/* Step 4: Requester & Department Contact */}
           <div className="space-y-3">
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              4. ข้อมูลหน่วยงานและผู้ประสานงาน
+              4. ข้อมูลหลักสูตร / หน่วยงาน และผู้ประสานงาน
             </label>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                หน่วยงาน / คณะ / สำนัก *
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                  หลักสูตร / หน่วยงาน / บริการวิชาการ (คณะพยาบาลศาสตร์ ม.นเรศวร) *
+                </label>
+                <a
+                  href="https://www.nurse.nu.ac.th/index.html/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                >
+                  <span>nurse.nu.ac.th</span>
+                </a>
+              </div>
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                className="w-full px-3.5 py-2 text-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                className="w-full px-3.5 py-2.5 text-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
               >
-                {DEPARTMENTS_LIST.map((d) => (
-                  <option key={d} value={d}>{d}</option>
+                {NURSE_NU_DEPARTMENT_GROUPS.map((grp) => (
+                  <optgroup key={grp.groupName} label={`━━ ${grp.groupName} ━━`} className="font-bold text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-900">
+                    {grp.items.map((item) => (
+                      <option key={item} value={item} className="font-normal text-slate-800 dark:text-slate-200 py-1 bg-white dark:bg-slate-800">
+                        {item}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
-                <option value="อื่นๆ (ระบุเอง)">อื่นๆ (ระบุเอง)</option>
+                <optgroup label="━━ อื่นๆ ━━" className="font-bold text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-900">
+                  <option value="อื่นๆ (ระบุเอง)" className="font-normal text-slate-800 dark:text-slate-200 py-1 bg-white dark:bg-slate-800">
+                    อื่นๆ (ระบุเอง)
+                  </option>
+                </optgroup>
               </select>
             </div>
 
@@ -402,11 +422,11 @@ export const NewRequestModal: React.FC<NewRequestModalProps> = ({
               <div>
                 <input
                   type="text"
-                  placeholder="พิมพ์ชื่อหน่วยงานของคุณ..."
+                  placeholder="พิมพ์ระบุชื่อหลักสูตร หรือหน่วยงานของคุณ..."
                   value={customDept}
                   onChange={(e) => setCustomDept(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2 text-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                  className="w-full px-3.5 py-2 text-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             )}
