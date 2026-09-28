@@ -13,11 +13,65 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // API Route: Verify LINE Token & Get Bot Info
+  app.post('/api/line-bot-info', async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body;
+      const activeToken = (token || '').trim();
+
+      if (!activeToken || activeToken.startsWith('DEMO_')) {
+        return res.status(200).json({
+          valid: false,
+          isDemo: true,
+          error: 'ปัจจุบันใช้ Demo Token กรุณากรอก Channel Access Token จาก LINE Developers',
+        });
+      }
+
+      // Check against LINE Messaging API
+      const botRes = await fetch('https://api.line.me/v2/bot/info', {
+        headers: {
+          Authorization: `Bearer ${activeToken}`,
+        },
+      });
+
+      const botData = await botRes.json().catch(() => ({}));
+
+      if (botRes.ok) {
+        return res.status(200).json({
+          valid: true,
+          isDemo: false,
+          bot: {
+            displayName: botData.displayName,
+            basicId: botData.basicId,
+            userId: botData.userId,
+            pictureUrl: botData.pictureUrl,
+            chatMode: botData.chatMode,
+          },
+          message: `เชื่อมต่อกับ LINE Bot "${botData.displayName}" (@${botData.basicId}) สำเร็จ!`,
+        });
+      } else {
+        return res.status(botRes.status).json({
+          valid: false,
+          isDemo: false,
+          status: botRes.status,
+          error: botData.message || 'Token ไม่ถูกต้องหรือหมดอายุ (Authentication failed 401)',
+          hint: 'โปรดตรวจสอบว่าได้คัดลอก Channel access token (long-lived) มาครบถ้วนหรือไม่',
+          tokenLength: activeToken.length,
+        });
+      }
+    } catch (err: any) {
+      return res.status(500).json({
+        valid: false,
+        error: `ไม่สามารถตรวจสอบ Token: ${err.message}`,
+      });
+    }
+  });
+
   // API Route: Send LINE Notification
   app.post('/api/line-notify', async (req: Request, res: Response) => {
     try {
       const {
-        provider = 'line_notify',
+        provider = 'line_messaging_api',
         token,
         channelAccessToken,
         webhookUrl,
@@ -48,7 +102,7 @@ async function startServer() {
       }
 
       // 2. Custom Webhook (Google Apps Script, Make, Zapier, etc.)
-      if (provider === 'webhook' || (webhookUrl && webhookUrl.trim())) {
+      if (webhookUrl && webhookUrl.trim()) {
         try {
           const webhookRes = await fetch(webhookUrl.trim(), {
             method: 'POST',
@@ -56,6 +110,7 @@ async function startServer() {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
+              token: activeToken,
               message,
               timestamp: new Date().toISOString(),
               source: 'PR SYSTEM คณะพยาบาลศาสตร์ ม.นเรศวร',
@@ -87,116 +142,77 @@ async function startServer() {
       }
 
       // 3. LINE Messaging API (LINE Official Account / Channel Access Token)
-      if (provider === 'line_messaging_api' || channelAccessToken) {
-        try {
-          const botToken = channelAccessToken || activeToken;
-          const endpoint = to && to.trim()
-            ? 'https://api.line.me/v2/bot/message/push'
-            : 'https://api.line.me/v2/bot/message/broadcast';
+      // First verify the token with LINE's server
+      const verifyRes = await fetch('https://api.line.me/v2/bot/info', {
+        headers: {
+          Authorization: `Bearer ${activeToken}`,
+        },
+      });
 
-          const payload = to && to.trim()
-            ? {
-                to: to.trim(),
-                messages: [{ type: 'text', text: message }],
-              }
-            : {
-                messages: [{ type: 'text', text: message }],
-              };
+      const botInfo = await verifyRes.json().catch(() => ({}));
 
-          const botRes = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${botToken}`,
-            },
-            body: JSON.stringify(payload),
-          });
+      if (verifyRes.ok) {
+        // Token is valid! Now send message via broadcast or push
+        const endpoint = to && to.trim()
+          ? 'https://api.line.me/v2/bot/message/push'
+          : 'https://api.line.me/v2/bot/message/broadcast';
 
-          const botData = await botRes.json().catch(() => ({}));
+        const payload = to && to.trim()
+          ? {
+              to: to.trim(),
+              messages: [{ type: 'text', text: message }],
+            }
+          : {
+              messages: [{ type: 'text', text: message }],
+            };
 
-          if (botRes.ok) {
-            return res.status(200).json({
-              success: true,
-              simulated: false,
-              provider: 'line_messaging_api',
-              message: 'ส่งข้อความผ่าน LINE Official Account (Messaging API) สำเร็จ!',
-              details: botData,
-            });
-          } else {
-            return res.status(botRes.status).json({
-              success: false,
-              simulated: false,
-              error: botData.message || `LINE Messaging API ตอบกลับด้วยสถานะ HTTP ${botRes.status}`,
-              status: botRes.status,
-              hint: botRes.status === 401
-                ? 'Channel Access Token ไม่ถูกต้องหรือหมดอายุ'
-                : 'กรุณาตรวจสอบสิทธิ์และโควต้าการส่งข้อความของ LINE Official Account',
-              details: botData,
-            });
-          }
-        } catch (botErr: any) {
-          return res.status(502).json({
-            success: false,
-            simulated: false,
-            error: `เชื่อมต่อ LINE Messaging API ไม่สำเร็จ: ${botErr.message}`,
-          });
-        }
-      }
-
-      // 4. LINE Notify API (Default & Most Popular)
-      try {
-        const lineNotifyRes = await fetch('https://notify-api.line.me/api/notify', {
+        const sendRes = await fetch(endpoint, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
             Authorization: `Bearer ${activeToken}`,
           },
-          body: new URLSearchParams({ message }).toString(),
+          body: JSON.stringify(payload),
         });
 
-        const lineData = await lineNotifyRes.json().catch(() => ({}));
+        const sendData = await sendRes.json().catch(() => ({}));
 
-        if (lineNotifyRes.ok) {
+        if (sendRes.ok) {
           return res.status(200).json({
             success: true,
             simulated: false,
-            provider: 'line_notify',
-            message: 'ส่งการแจ้งเตือนเข้า LINE สำเร็จเรียบร้อย!',
-            status: 200,
-            details: lineData,
+            provider: 'line_messaging_api',
+            botName: botInfo.displayName,
+            botId: botInfo.basicId,
+            message: `ส่งแจ้งเตือนผ่านบอท "${botInfo.displayName}" (@${botInfo.basicId}) สำเร็จ!`,
+            hint: `ส่งข้อความ Broadcast ไปยังผู้ติดตามบอท @${botInfo.basicId} เรียบร้อยแล้ว`,
+            details: sendData,
           });
         } else {
-          let hintMessage = 'กรุณาตรวจสอบการตั้งค่า LINE Notify';
-          if (lineNotifyRes.status === 401) {
-            hintMessage = 'Token ไม่ถูกต้องหรือหมดอายุ กรุณาไปที่ https://notify-bot.line.me/my/ เพื่อสร้าง Token ใหม่';
-          } else if (lineNotifyRes.status === 400) {
-            hintMessage = 'คำขอไม่ถูกต้อง: หากเลือกส่งเข้ากลุ่ม ต้องเชิญ @LINE Notify เข้ากลุ่มแชทนั้นด้วย';
-          }
-
-          return res.status(lineNotifyRes.status).json({
+          return res.status(sendRes.status).json({
             success: false,
             simulated: false,
-            status: lineNotifyRes.status,
-            error: lineData.message || `LINE Notify ตอบกลับด้วยสถานะ HTTP ${lineNotifyRes.status}`,
-            hint: hintMessage,
-            details: lineData,
+            status: sendRes.status,
+            error: sendData.message || `LINE ตอบกลับด้วยรหัส HTTP ${sendRes.status}`,
+            hint: sendData.details?.map((d: any) => d.message).join(', ') || 'โปรดตรวจสอบโควต้าข้อความหรือสิทธิ์ของบอท',
+            details: sendData,
           });
         }
-      } catch (lineErr: any) {
-        const isNetworkOrDnsError = 
-          lineErr.message?.includes('fetch failed') || 
-          lineErr.message?.includes('ENOTFOUND') ||
-          lineErr.message?.includes('Could not resolve host');
+      } else {
+        // Token rejected by LINE Messaging API
+        // Provide clear diagnostic
+        const isOldNotifyFormat = activeToken.length < 50;
 
-        return res.status(502).json({
+        return res.status(401).json({
           success: false,
           simulated: false,
-          error: isNetworkOrDnsError
-            ? 'สภาพแวดล้อม Dev Sandbox ไม่สามารถเชื่อมต่อกับ notify-api.line.me ได้โดยตรง (ติดข้อจำกัด Firewall/DNS ของเครื่องพัฒนา)'
-            : `ไม่สามารถส่งคำขอไปยัง LINE Notify: ${lineErr.message}`,
-          hint: isNetworkOrDnsError
-            ? 'แนะนำให้ใช้ตัวเลือก Google Apps Script Webhook (ฟรี ใช้ง่าย และส่งเข้ามือถือจริงได้ 100% ไม่ติดบล็อก) หรือ Deploy สู่ระบบจริง'
-            : 'โปรดตรวจสอบความถูกต้องของ Token หรือการเชื่อมต่ออินเทอร์เน็ต',
+          status: 401,
+          error: botInfo.message || 'รหัส Token ไม่ถูกต้อง (LINE Authentication failed: 401)',
+          hint: isOldNotifyFormat
+            ? 'รหัสที่คุณใส่มีความยาวสั้นคล้าย LINE Notify เดิม (ซึ่ง LINE ปิดบริการไปแล้ว) กรุณาสร้าง Channel access token จาก developers.line.biz (ความยาวประมาณ 170+ ตัวอักษร) หรือใช้ Webhook แทน'
+            : 'โปรดตรวจสอบว่าได้คัดลอก "Channel access token (long-lived)" จาก LINE Developers Console มาครบถ้วนทุกตัวอักษรหรือไม่',
+          tokenLength: activeToken.length,
+          details: botInfo,
         });
       }
     } catch (err: any) {

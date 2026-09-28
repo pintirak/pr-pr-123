@@ -3,7 +3,6 @@ import {
   BellRing, 
   Send, 
   CheckCircle2, 
-  ShieldCheck, 
   Smartphone, 
   Trash2, 
   Copy, 
@@ -12,15 +11,11 @@ import {
   Info,
   ExternalLink,
   MessageCircle,
-  HelpCircle,
   Key,
   Users,
   UserCheck,
-  ChevronRight,
-  ArrowRight,
   RefreshCw,
-  Sparkles,
-  Bot
+  Search
 } from 'lucide-react';
 import { LineNotificationSettings, NotificationLog } from '../types';
 import { dispatchLineNotification, formatLineMessage, DispatchLineResult } from '../utils/lineNotify';
@@ -41,18 +36,26 @@ export const LineSettingsModal: React.FC<LineSettingsModalProps> = ({
   onAddLog,
 }) => {
   const [formData, setFormData] = useState<LineNotificationSettings>({ ...settings });
-  const [activeSetupTab, setActiveSetupTab] = useState<'line_notify' | 'messaging_api' | 'webhook'>('line_notify');
   const [testResult, setTestResult] = useState<DispatchLineResult | null>(null);
   const [isTesting, setIsTesting] = useState(false);
+  
+  // Bot verification states
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [botVerifyResult, setBotVerifyResult] = useState<{
+    valid: boolean;
+    bot?: { displayName: string; basicId: string; pictureUrl?: string };
+    error?: string;
+    hint?: string;
+    tokenLength?: number;
+  } | null>(null);
+
   const [customTestText, setCustomTestText] = useState('');
   const [showCustomTest, setShowCustomTest] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [copiedGas, setCopiedGas] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [showFaqGuide, setShowFaqGuide] = useState(true);
 
   // Check if current token is demo or empty
-  const activeToken = formData.lineNotifyToken || formData.channelAccessToken || '';
+  const activeToken = (formData.lineNotifyToken || formData.channelAccessToken || '').trim();
   const isDemoMode = !activeToken || activeToken.startsWith('DEMO_');
 
   const handleToggle = (key: keyof LineNotificationSettings) => {
@@ -66,6 +69,45 @@ export const LineSettingsModal: React.FC<LineSettingsModalProps> = ({
     setTimeout(() => setSaveSuccess(false), 2500);
   };
 
+  // Verify token directly with LINE API
+  const handleVerifyToken = async () => {
+    if (!activeToken || activeToken.startsWith('DEMO_')) {
+      setBotVerifyResult({
+        valid: false,
+        error: 'ยังไม่ได้ใส่ Token จริง (เป็นค่าจำลอง Demo)',
+        hint: 'กรุณานำ Channel access token จาก developers.line.biz มาวางในช่องนี้',
+        tokenLength: activeToken.length,
+      });
+      return;
+    }
+
+    setIsVerifying(true);
+    setBotVerifyResult(null);
+
+    try {
+      const res = await fetch('/api/line-bot-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: activeToken }),
+      });
+      const data = await res.json();
+      setBotVerifyResult(data);
+      if (data.valid && data.bot) {
+        setFormData((prev) => ({
+          ...prev,
+          targetName: `บอท ${data.bot.displayName} (@${data.bot.basicId})`,
+        }));
+      }
+    } catch (err: any) {
+      setBotVerifyResult({
+        valid: false,
+        error: `ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ตรวจสอบได้: ${err.message}`,
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const handleTestPing = async (customMessage?: string) => {
     setIsTesting(true);
     setTestResult(null);
@@ -73,7 +115,6 @@ export const LineSettingsModal: React.FC<LineSettingsModalProps> = ({
     try {
       let result: DispatchLineResult;
       if (customMessage) {
-        // Send custom typed message
         result = await dispatchLineNotification('test', formData, undefined, customMessage);
       } else {
         result = await dispatchLineNotification('test', formData);
@@ -82,7 +123,6 @@ export const LineSettingsModal: React.FC<LineSettingsModalProps> = ({
       setTestResult(result);
       onAddLog(result.log);
 
-      // Also update settings with test timestamp
       if (result.success && result.isReal) {
         const updated = {
           ...formData,
@@ -149,7 +189,7 @@ export const LineSettingsModal: React.FC<LineSettingsModalProps> = ({
               ) : (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  <span>เชื่อมต่อ LINE Token แล้ว</span>
+                  <span>ใส่รหัส Token แล้ว</span>
                 </span>
               )}
             </div>
@@ -180,59 +220,7 @@ export const LineSettingsModal: React.FC<LineSettingsModalProps> = ({
         </div>
       </div>
 
-      {/* SPECIAL HELP BANNER: Direct Answer to "กดให้แจ้งเตือนในไลน์เเล้ว ไม่เห็นแจ้งเลย" */}
-      <div className="p-5 rounded-3xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30 border border-amber-200/80 dark:border-amber-800/60 shadow-sm space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2.5 text-amber-900 dark:text-amber-200">
-            <HelpCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
-            <h3 className="text-sm font-bold">
-              💡 ทำไมกดปุ่มแจ้งเตือนแล้ว "ไม่เห็นมีข้อความเข้าใน LINE"? (วิธีแก้ไขใน 1 นาที)
-            </h3>
-          </div>
-          <button
-            onClick={() => setShowFaqGuide(!showFaqGuide)}
-            className="text-xs text-amber-700 dark:text-amber-300 underline font-medium hover:text-amber-900"
-          >
-            {showFaqGuide ? 'ซ่อนคำแนะนำ' : 'แสดงคำแนะนำ'}
-          </button>
-        </div>
-
-        {showFaqGuide && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-700 dark:text-slate-300 pt-1">
-            <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-amber-200/60 dark:border-amber-800/40 space-y-1.5">
-              <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200">
-                <span className="w-5 h-5 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center text-[10px]">1</span>
-                <span>ยังไม่ได้ใส่ Token จริง</span>
-              </div>
-              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                หากช่อง Token ยังเป็นค่า <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded">DEMO_...</span> ระบบจะจำลองประวัติในหน้าเว็บเท่านั้น <strong>ต้องไปออก Token จาก LINE</strong> แล้วนำมาวางเพื่อส่งเข้ามือถือจริง
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-amber-200/60 dark:border-amber-800/40 space-y-1.5">
-              <div className="flex items-center gap-1.5 font-bold text-rose-700 dark:text-rose-300">
-                <span className="w-5 h-5 rounded-full bg-rose-200 text-rose-900 flex items-center justify-center text-[10px]">2</span>
-                <span>ลืมดึงบอทเข้ากลุ่ม (พบบ่อยสุด!)</span>
-              </div>
-              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                หากสร้าง Token สำหรับกลุ่ม คุณ<strong>ต้องกด 'เชิญเพื่อน' ในกลุ่ม LINE แล้วค้นหา "LINE Notify" ดึงเข้ากลุ่มด้วย</strong> มิฉะนั้น LINE จะบล็อกข้อความไม่ให้ส่งเข้ากลุ่มเด็ดขาด
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-amber-200/60 dark:border-amber-800/40 space-y-1.5">
-              <div className="flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-300">
-                <span className="w-5 h-5 rounded-full bg-emerald-200 text-emerald-900 flex items-center justify-center text-[10px]">3</span>
-                <span>แนะนำให้ลองส่งหาตัวเองก่อน</span>
-              </div>
-              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                ตอนออก Token ให้เลือก <strong>"รับการแจ้งเตือนแบบตัวต่อตัวจาก LINE Notify"</strong> เพื่อทดสอบว่าส่งเข้าแชทส่วนตัวสำเร็จแน่นอน 100% จากนั้นค่อยเปลี่ยนเป็นกลุ่ม
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Real-time Test Result Alert (Shows exact status from LINE server, no false positives) */}
+      {/* Real-time Test Result Alert */}
       {testResult && (
         <div
           className={`p-4 rounded-3xl border transition-all animate-fadeIn ${
@@ -263,22 +251,22 @@ export const LineSettingsModal: React.FC<LineSettingsModalProps> = ({
                 <p className="text-xs mt-1 leading-relaxed">
                   {testResult.isReal && testResult.success ? (
                     <span>
-                      ระบบได้ส่งข้อความทดสอบไปยัง LINE เรียบร้อยแล้ว กรุณาเปิดแอป LINE ในโทรศัพท์เพื่อตรวจสอบข้อความ
+                      {testResult.message} กรุณาเปิดแอป LINE ในโทรศัพท์เพื่อตรวจสอบข้อความ
                     </span>
                   ) : testResult.isDemo ? (
                     <span>
                       {testResult.errorDetail || 'เนื่องจากยังใช้ Demo Token ข้อความจึงแสดงเฉพาะในตารางประวัติด้านล่าง'}
                       <strong className="block mt-1 font-semibold text-amber-800 dark:text-amber-200">
-                        👉 กรุณาทำตาม 3 ขั้นตอนด้านล่างเพื่อรับ Token ฟรี แล้วนำมาใส่ในช่องด้านล่าง
+                        👉 กรุณาใส่ Token ที่ได้จาก LINE ในช่องด้านล่าง แล้วบันทึกการตั้งค่า
                       </strong>
                     </span>
                   ) : (
                     <span>
-                      {testResult.errorDetail}
+                      <strong>สาเหตุ:</strong> {testResult.errorDetail}
                       {testResult.hint && (
-                        <strong className="block mt-1 text-rose-800 dark:text-rose-200">
-                          คำแนะนำ: {testResult.hint}
-                        </strong>
+                        <span className="block mt-1 text-rose-800 dark:text-rose-200 font-medium">
+                          💡 <strong>คำแนะนำแก้ไข:</strong> {testResult.hint}
+                        </span>
                       )}
                     </span>
                   )}
@@ -294,197 +282,6 @@ export const LineSettingsModal: React.FC<LineSettingsModalProps> = ({
           </div>
         </div>
       )}
-
-      {/* Step-by-Step Guide Accordion / Tabs */}
-      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-600" />
-              <span>วิธีตั้งค่าการแจ้งเตือน LINE ให้ส่งเข้ามือถือจริง (ทำตามได้ทันที)</span>
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              เลือกวิธีการเชื่อมต่อที่สะดวกสำหรับหน่วยงานของคุณ
-            </p>
-          </div>
-
-          {/* Setup Method Selector */}
-          <div className="flex items-center p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs">
-            <button
-              type="button"
-              onClick={() => setActiveSetupTab('line_notify')}
-              className={`px-3 py-1.5 rounded-xl font-medium transition-all ${
-                activeSetupTab === 'line_notify'
-                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              1. LINE Notify (แนะนำ)
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSetupTab('messaging_api')}
-              className={`px-3 py-1.5 rounded-xl font-medium transition-all ${
-                activeSetupTab === 'messaging_api'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              2. LINE Official (Bot)
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSetupTab('webhook')}
-              className={`px-3 py-1.5 rounded-xl font-medium transition-all ${
-                activeSetupTab === 'webhook'
-                  ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-sm font-bold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              3. Webhook URL
-            </button>
-          </div>
-        </div>
-
-        {/* Tab 1: LINE Notify Step-by-Step */}
-        {activeSetupTab === 'line_notify' && (
-          <div className="space-y-4 pt-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-              
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 space-y-2">
-                <div className="w-7 h-7 rounded-xl bg-emerald-500 text-white font-bold flex items-center justify-center text-xs">
-                  1
-                </div>
-                <h5 className="font-bold text-slate-800 dark:text-slate-200">เปิดเว็บ LINE Notify</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  เข้าสู่ระบบด้วยอีเมลหรือเบอร์โทร LINE ของคุณ
-                </p>
-                <a
-                  href="https://notify-bot.line.me/my/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold transition-all mt-1"
-                >
-                  <span>เปิดเว็บ LINE Notify</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 space-y-2">
-                <div className="w-7 h-7 rounded-xl bg-emerald-500 text-white font-bold flex items-center justify-center text-xs">
-                  2
-                </div>
-                <h5 className="font-bold text-slate-800 dark:text-slate-200">กด "ออก Token"</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  ไปที่ <strong>"My Page (หน้าของฉัน)"</strong> เลื่อนลงล่างสุดแล้วกดปุ่ม <strong>"Generate token (ออก Token)"</strong>
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 space-y-2">
-                <div className="w-7 h-7 rounded-xl bg-emerald-500 text-white font-bold flex items-center justify-center text-xs">
-                  3
-                </div>
-                <h5 className="font-bold text-slate-800 dark:text-slate-200">เลือกห้องแชท หรือ กลุ่ม</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  ตั้งชื่อเช่น <em>PR Nurse NU</em> แล้วเลือกส่งหาตัวเอง (1-on-1) หรือเลือกกลุ่มงาน PR
-                </p>
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold block">
-                  * หากเลือกกลุ่ม ต้องเชิญ LINE Notify เข้ากลุ่มด้วย
-                </span>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 space-y-2">
-                <div className="w-7 h-7 rounded-xl bg-emerald-500 text-white font-bold flex items-center justify-center text-xs">
-                  4
-                </div>
-                <h5 className="font-bold text-slate-800 dark:text-slate-200">คัดลอก Token มาวาง</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  นำ Token ตัวอักษรยาวๆ มาวางในช่องด้านล่าง แล้วกด <strong>"บันทึกและทดสอบส่ง"</strong>
-                </p>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: LINE Official Account Bot */}
-        {activeSetupTab === 'messaging_api' && (
-          <div className="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/40 text-xs space-y-2">
-            <h5 className="font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
-              <Bot className="w-4 h-4 text-blue-600" />
-              <span>การเชื่อมต่อผ่าน LINE Official Account (Messaging API)</span>
-            </h5>
-            <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
-              สำหรับคณะพยาบาลศาสตร์ หรือหน่วยงานที่มีบัญชี <strong>LINE Official Account (@nurse.nu)</strong> สามารถสร้าง Channel ใน{' '}
-              <a
-                href="https://developers.line.biz/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-blue-400 underline font-semibold inline-flex items-center gap-0.5"
-              >
-                <span>LINE Developers Console</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>{' '}
-              แล้วสร้าง <strong>Channel Access Token (Long-lived)</strong> มาวางในช่องด้านล่าง เพื่อส่งข้อความ Broadcast แจ้งเตือนแบบอัตโนมัติ
-            </p>
-          </div>
-        )}
-
-        {/* Tab 3: Webhook URL */}
-        {activeSetupTab === 'webhook' && (
-          <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-800/40 text-xs space-y-3">
-            <div>
-              <h5 className="font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
-                <ExternalLink className="w-4 h-4 text-purple-600" />
-                <span>การเชื่อมต่อผ่าน Google Apps Script Web App (ฟรี ไม่ติด CORS ส่งเข้า LINE ได้ 100%)</span>
-              </h5>
-              <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed mt-1">
-                สร้าง Web App ใน <strong>script.google.com</strong> แล้ว Deploy เป็น Web App (สิทธิ์ Anyone) นำ URL มาใส่ในช่อง Webhook ด้านล่าง
-              </p>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-900 text-slate-200 font-mono text-[10px] space-y-2 overflow-x-auto">
-              <div className="flex items-center justify-between text-slate-400 pb-1 border-b border-slate-800">
-                <span>Code.gs (Google Apps Script)</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const gasCode = `function doPost(e) {
-  var data = JSON.parse(e.postData.contents);
-  var token = "${formData.lineNotifyToken || 'YOUR_LINE_NOTIFY_TOKEN'}";
-  UrlFetchApp.fetch("https://notify-api.line.me/api/notify", {
-    method: "post",
-    headers: { "Authorization": "Bearer " + token },
-    payload: { "message": data.message }
-  });
-  return ContentService.createTextOutput(JSON.stringify({ success: true }))
-    .setMimeType(ContentService.MimeType.JSON);
-}`;
-                    navigator.clipboard.writeText(gasCode);
-                    setCopiedGas(true);
-                    setTimeout(() => setCopiedGas(false), 2500);
-                  }}
-                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-emerald-400 flex items-center gap-1"
-                >
-                  {copiedGas ? <span>✓ คัดลอกแล้ว!</span> : <span>คัดลอกโค้ด</span>}
-                </button>
-              </div>
-              <pre>{`function doPost(e) {
-  var data = JSON.parse(e.postData.contents);
-  var token = "${formData.lineNotifyToken || 'YOUR_LINE_NOTIFY_TOKEN'}";
-  UrlFetchApp.fetch("https://notify-api.line.me/api/notify", {
-    method: "post",
-    headers: { "Authorization": "Bearer " + token },
-    payload: { "message": data.message }
-  });
-  return ContentService.createTextOutput(JSON.stringify({ success: true }))
-    .setMimeType(ContentService.MimeType.JSON);
-}`}</pre>
-            </div>
-          </div>
-        )}
-
-      </div>
 
       {/* Main Settings Grid: Configuration & Preview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -523,52 +320,98 @@ export const LineSettingsModal: React.FC<LineSettingsModalProps> = ({
             {/* Provider Configuration Inputs */}
             <div className="space-y-4 text-xs">
               
-              {/* Token Input with Clear Status */}
+              {/* Token Input with Direct Verify Button */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                     <Key className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>LINE Notify Token หรือ Channel Access Token</span>
+                    <span>LINE Channel Access Token (จาก LINE Developers)</span>
                   </label>
                   <a
-                    href="https://notify-bot.line.me/my/"
+                    href="https://developers.line.biz/console/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold hover:underline inline-flex items-center gap-1"
                   >
-                    <span>คลิกขอ Token ที่นี่</span>
+                    <span>เปิด LINE Developers</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
 
-                <div className="relative">
+                <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="วาง Token ของคุณที่นี่ (ตัวอักษรยาวๆ ที่คัดลอกจาก LINE Notify)"
+                    placeholder="วาง Channel access token ที่นี่ (ความยาวประมาณ 170+ ตัวอักษร)"
                     value={formData.lineNotifyToken}
-                    onChange={(e) => setFormData({ ...formData, lineNotifyToken: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    onChange={(e) => {
+                      setFormData({ ...formData, lineNotifyToken: e.target.value });
+                      setBotVerifyResult(null);
+                    }}
+                    className="flex-1 px-3.5 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
-                  {formData.lineNotifyToken && !formData.lineNotifyToken.startsWith('DEMO_') ? (
-                    <span className="absolute right-3 top-2.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">
-                      ✓ พร้อมส่งจริง
-                    </span>
-                  ) : (
-                    <span className="absolute right-3 top-2.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-md">
-                      ⚠️ โหมด Demo
-                    </span>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleVerifyToken}
+                    disabled={isVerifying}
+                    className="px-4 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 flex-shrink-0 transition-all active:scale-95"
+                  >
+                    {isVerifying ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Search className="w-3.5 h-3.5" />
+                    )}
+                    <span>ตรวจสอบ</span>
+                  </button>
                 </div>
 
-                {isDemoMode ? (
+                {/* Token Verification Result Card */}
+                {botVerifyResult && (
+                  <div
+                    className={`mt-2 p-3 rounded-2xl border text-xs animate-fadeIn ${
+                      botVerifyResult.valid
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100'
+                        : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-100'
+                    }`}
+                  >
+                    {botVerifyResult.valid && botVerifyResult.bot ? (
+                      <div className="flex items-start gap-2.5">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-bold">
+                            ✓ ตรวจพบบอท LINE: "{botVerifyResult.bot.displayName}" (LINE ID: {botVerifyResult.bot.basicId})
+                          </p>
+                          <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
+                            สถานะ Token ถูกต้อง 100%! อย่าลืมค้นหาไอดี <strong>{botVerifyResult.bot.basicId}</strong> ในแอป LINE เพื่อเพิ่มเพื่อน
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-2.5">
+                        <AlertTriangle className="w-5 h-5 text-rose-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-bold">
+                            ✗ {botVerifyResult.error}
+                          </p>
+                          {botVerifyResult.hint && (
+                            <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-0.5">
+                              คำแนะนำ: {botVerifyResult.hint}
+                            </p>
+                          )}
+                          {botVerifyResult.tokenLength !== undefined && (
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              ความยาวรหัสที่คุณใส่: {botVerifyResult.tokenLength} ตัวอักษร
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {isDemoMode && !botVerifyResult && (
                   <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-                    <span>ขณะนี้ใช้ Token จำลองอยู่ ข้อความจึงไม่เข้าโทรศัพท์ กรุณาวาง Token จริงที่ได้จาก LINE</span>
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
-                    <span>ระบบจะส่งข้อความแจ้งเตือนเข้า LINE จริงทุกครั้งที่มีการอัปเดตงาน</span>
+                    <span>ขณะนี้ใช้ Token จำลองอยู่ ข้อความจึงไม่เข้าโทรศัพท์ กรุณานำ Token จริงมาวางแล้วกด 'ตรวจสอบ'</span>
                   </p>
                 )}
               </div>
@@ -577,11 +420,11 @@ export const LineSettingsModal: React.FC<LineSettingsModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    ชื่อกลุ่มหรือแชทที่รับการแจ้งเตือน
+                    ชื่อบอทหรือกลุ่มที่ส่งแจ้งเตือน
                   </label>
                   <input
                     type="text"
-                    placeholder="เช่น กลุ่มงาน PR คณะพยาบาลศาสตร์"
+                    placeholder="เช่น บอท PR คณะพยาบาลศาสตร์ ม.นเรศวร"
                     value={formData.targetName || ''}
                     onChange={(e) => setFormData({ ...formData, targetName: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
@@ -759,7 +602,7 @@ export const LineSettingsModal: React.FC<LineSettingsModalProps> = ({
                 </div>
                 <div className="flex-1 space-y-1">
                   <span className="text-[10px] text-slate-400 font-semibold">
-                    {formData.targetName || 'LINE Notify / PR Team'}
+                    {formData.targetName || 'LINE Bot / PR Nurse NU'}
                   </span>
                   <div className="bg-white text-slate-900 rounded-2xl rounded-tl-sm p-3.5 text-xs shadow-md whitespace-pre-line leading-relaxed font-sans">
                     {previewMessage}
