@@ -6,18 +6,15 @@ import {
   LayoutDashboard, 
   BarChart3, 
   BellRing, 
-  Github, 
-  Sparkles,
-  Database
+  Sparkles 
 } from 'lucide-react';
 
 interface NavbarProps {
-  activeTab: 'dashboard' | 'report' | 'line' | 'deploy';
-  setActiveTab: (tab: 'dashboard' | 'report' | 'line' | 'deploy') => void;
+  activeTab: 'dashboard' | 'report' | 'line';
+  setActiveTab: (tab: 'dashboard' | 'report' | 'line') => void;
   darkMode: boolean;
   setDarkMode: (val: boolean | ((prev: boolean) => boolean)) => void;
   onOpenNewRequest: () => void;
-  onOpenDeployGuide: () => void;
   pendingCount: number;
 }
 
@@ -27,7 +24,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   darkMode,
   setDarkMode,
   onOpenNewRequest,
-  onOpenDeployGuide,
   pendingCount,
 }) => {
   return (
@@ -106,19 +102,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <BellRing className="w-4 h-4" />
               <span>แจ้งเตือน LINE</span>
             </button>
-
-            <button
-              id="nav-tab-deploy"
-              onClick={() => setActiveTab('deploy')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-sm font-medium transition-all ${
-                activeTab === 'deploy'
-                  ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Github className="w-4 h-4" />
-              <span>GitHub & Vercel</span>
-            </button>
           </nav>
 
           {/* Right Action Controls */}
@@ -137,17 +120,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               ) : (
                 <Moon className="w-5 h-5 text-indigo-600 transition-transform duration-300 hover:-rotate-12 animate-in fade-in zoom-in" />
               )}
-            </button>
-
-            {/* Quick Deploy / Database Guide Button */}
-            <button
-              id="quick-deploy-btn"
-              onClick={onOpenDeployGuide}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium transition-colors"
-              title="ระบบไฟล์เบส, จัดการฐานข้อมูล & Deploy"
-            >
-              <Database className="w-3.5 h-3.5 text-blue-500" />
-              <span>ฐานข้อมูล & Deploy</span>
             </button>
 
             {/* Primary Action Button: New Request */}

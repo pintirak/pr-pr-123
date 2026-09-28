@@ -237,9 +237,12 @@ export const DEPARTMENTS_LIST: string[] = NURSE_NU_DEPARTMENT_GROUPS.flatMap((g)
 
 export const INITIAL_LINE_SETTINGS: LineNotificationSettings = {
   enabled: true,
+  provider: 'line_notify',
   lineNotifyToken: 'DEMO_LINE_NOTIFY_TOKEN_PR_SYSTEM',
-  webhookUrl: 'https://notify-api.line.me/api/notify',
+  webhookUrl: '',
   channelAccessToken: '',
+  targetType: 'group',
+  targetName: 'กลุ่มงาน PR คณะพยาบาลศาสตร์ ม.นเรศวร',
   notifyOnNewRequest: true,
   notifyOnStatusChange: true,
   notifyOnDelivery: true,

@@ -17,7 +17,6 @@ import { TaskDetailModal } from './components/TaskDetailModal';
 import { NewRequestModal } from './components/NewRequestModal';
 import { MonthlyReportView } from './components/MonthlyReportView';
 import { LineSettingsModal } from './components/LineSettingsModal';
-import { DeployModal } from './components/DeployModal';
 import { dispatchLineNotification } from './utils/lineNotify';
 import { 
   Kanban, 
@@ -29,7 +28,6 @@ import {
   LayoutDashboard, 
   BarChart3, 
   BellRing, 
-  Github, 
   Sparkles,
   CheckCircle2
 } from 'lucide-react';
@@ -59,7 +57,7 @@ export default function App() {
   const [logs, setLogs] = useState<NotificationLog[]>(() => loadLogsFromStorage());
 
   // Navigation tab
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'report' | 'line' | 'deploy'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'report' | 'line'>('dashboard');
   
   // Dashboard view toggle: kanban vs list
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
@@ -163,9 +161,16 @@ export default function App() {
     if (settings.enabled && settings.notifyOnNewRequest) {
       const result = await dispatchLineNotification('new_request', settings, newRequest);
       setLogs((prev) => [result.log, ...prev]);
+      if (result.isReal && result.success) {
+        showToast(`✓ ยื่นคำขอ #${newId} สำเร็จและส่งแจ้งเตือนเข้า LINE เรียบร้อย!`);
+      } else if (result.isDemo) {
+        showToast(`✓ ยื่นคำขอ #${newId} สำเร็จ (ระบบแจ้งเตือนอยู่ในโหมด Demo ยังไม่ส่งเข้ามือถือจริง)`);
+      } else {
+        showToast(`✓ ยื่นคำขอ #${newId} สำเร็จ (แต่ส่ง LINE ไม่ผ่าน: ${result.errorDetail || 'ตรวจสอบ Token'})`);
+      }
+    } else {
+      showToast(`✓ ยื่นคำขอ #${newId} สำเร็จเรียบร้อย`);
     }
-
-    showToast(`✓ ยื่นคำขอ #${newId} สำเร็จและส่งแจ้งเตือนผ่าน LINE เรียบร้อย!`);
   };
 
   // Handler: Update status
@@ -219,9 +224,16 @@ export default function App() {
       const notiType = newStatus === 'completed' ? 'delivery' : 'status_change';
       const result = await dispatchLineNotification(notiType, settings, updatedTaskRef, note);
       setLogs((prev) => [result.log, ...prev]);
+      if (result.isReal && result.success) {
+        showToast(`✓ อัปเดตสถานะ #${taskId} และแจ้งเตือนใน LINE สำเร็จ`);
+      } else if (result.isDemo) {
+        showToast(`✓ อัปเดตสถานะ #${taskId} สำเร็จ (ระบบอยู่ในโหมด Demo)`);
+      } else {
+        showToast(`✓ อัปเดตสถานะ #${taskId} สำเร็จ (LINE: ${result.errorDetail || 'ส่งไม่ผ่าน'})`);
+      }
+    } else {
+      showToast(`✓ อัปเดตสถานะงาน #${taskId} สำเร็จ`);
     }
-
-    showToast(`✓ อัปเดตสถานะงาน #${taskId} สำเร็จ`);
   };
 
   // Handler: Advance status in Kanban
@@ -336,16 +348,29 @@ export default function App() {
     if (updatedTaskRef && settings.enabled && settings.notifyOnDelivery) {
       const res = await dispatchLineNotification('delivery', settings, updatedTaskRef);
       setLogs((prev) => [res.log, ...prev]);
+      if (res.isReal && res.success) {
+        showToast(`✓ ส่งมอบผลงานและแจ้งเตือนเข้า LINE เรียบร้อย!`);
+      } else if (res.isDemo) {
+        showToast(`✓ ส่งมอบผลงานสำเร็จ (ระบบอยู่ในโหมดจำลอง Demo)`);
+      } else {
+        showToast(`✓ ส่งมอบผลงานสำเร็จ (LINE: ${res.errorDetail || 'ส่งไม่ผ่าน'})`);
+      }
+    } else {
+      showToast(`✓ ส่งมอบผลงาน #${taskId} สำเร็จ`);
     }
-
-    showToast(`✓ ส่งมอบผลงานและแจ้งเตือนผ่าน LINE เรียบร้อย!`);
   };
 
   // Handler: Manual LINE Alert Trigger
   const handleTriggerLineAlert = async (task: PRRequest, customNote?: string) => {
     const res = await dispatchLineNotification('status_change', settings, task, customNote);
     setLogs((prev) => [res.log, ...prev]);
-    showToast(`✓ ส่งแจ้งเตือน LINE สำหรับงาน #${task.id} สำเร็จ!`);
+    if (res.isReal && res.success) {
+      showToast(`✓ ส่งการแจ้งเตือนเข้า LINE จริงสำเร็จ!`);
+    } else if (res.isDemo) {
+      showToast(`ℹ️ บันทึกการแจ้งเตือนแล้ว (โหมด Demo ยังไม่ส่งเข้ามือถือจริง)`);
+    } else {
+      showToast(`⚠️ ส่ง LINE ไม่สำเร็จ: ${res.errorDetail || 'ตรวจสอบ Token'}`);
+    }
   };
 
   // Handler: Delete Task
@@ -367,7 +392,6 @@ export default function App() {
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         onOpenNewRequest={() => setIsNewRequestOpen(true)}
-        onOpenDeployGuide={() => setActiveTab('deploy')}
         pendingCount={pendingCount}
       />
 
@@ -532,21 +556,6 @@ export default function App() {
           />
         )}
 
-        {/* TAB 4: DEPLOY & FILEBASE GUIDE */}
-        {activeTab === 'deploy' && (
-          <DeployModal
-            requests={requests}
-            settings={settings}
-            logs={logs}
-            onDatabaseRestored={(fresh) => {
-              setRequests(fresh.requests);
-              setSettings(fresh.settings);
-              setLogs(fresh.logs);
-              showToast('✓ กู้คืนฐานข้อมูลเรียบร้อยแล้ว');
-            }}
-          />
-        )}
-
       </main>
 
       {/* Task Detail Modal */}
@@ -610,16 +619,6 @@ export default function App() {
           >
             <BellRing className="w-5 h-5" />
             <span className="text-[10px]">แจ้งเตือน</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('deploy')}
-            className={`flex flex-col items-center gap-1 py-1 px-2 transition-colors ${
-              activeTab === 'deploy' ? 'text-purple-600 dark:text-purple-400 font-bold' : 'text-slate-400'
-            }`}
-          >
-            <Github className="w-5 h-5" />
-            <span className="text-[10px]">Deploy</span>
           </button>
 
         </div>

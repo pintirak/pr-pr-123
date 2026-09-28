@@ -90,14 +90,21 @@ export interface PRRequest {
 
 export interface LineNotificationSettings {
   enabled: boolean;
+  provider?: 'line_notify' | 'line_messaging_api' | 'webhook';
   lineNotifyToken: string;
   webhookUrl: string;
   channelAccessToken: string;
+  toUserId?: string;
+  targetType?: 'group' | 'personal';
+  targetName?: string;
   notifyOnNewRequest: boolean;
   notifyOnStatusChange: boolean;
   notifyOnDelivery: boolean;
   notifyOnUrgent: boolean;
   customPrefix: string;
+  lastTestedAt?: string;
+  lastTestSuccess?: boolean;
+  lastTestMessage?: string;
 }
 
 export interface NotificationLog {
@@ -109,6 +116,8 @@ export interface NotificationLog {
   recipient: string;
   message: string;
   status: 'sent' | 'simulated' | 'failed';
+  errorDetail?: string;
+  provider?: string;
 }
 
 export interface MonthlySummaryData {
